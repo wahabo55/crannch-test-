@@ -219,42 +219,60 @@ function removeFromCart(index) {
     updateCart();
 }
 
-async function connectAndPrint() {
+async function printReceipt() {
+    const receiptItems = cart.map(
+        (item) => `
+            ${item.name} (${item.qty}x) - ${item.price.toFixed(3)} KD
+            ${item.addOns.length > 0 ? `Add-ons: ${item.addOns.join(', ')}` : ''}
+        `
+    ).join('\n');
+
+    // Get current date and time
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleString();
+
+    // Prepare receipt text
+    const receiptText = `
+        Crannch
+        Date: ${formattedDate}
+        -------------------------
+        ${receiptItems}
+        -------------------------
+        Total: ${total.toFixed(3)} KD
+        -------------------------
+        Thank you for your purchase!
+        Follow us: @crannch_kw
+    `;
+
     try {
-        // Request a port for connection
-        const port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 9600 });
+        // Request a Bluetooth device
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['0000180a'] // Replace with your printer's service UUID
+        });
 
-        // Send ESC/POS commands
+        // Connect to the device's GATT server
+        const server = await device.gatt.connect();
+
+        // Get the service
+        const service = await server.getPrimaryService('0000180a'); // Replace with correct UUID
+
+        // Get the characteristic
+        const characteristic = await service.getCharacteristic('00002a57'); // Replace with correct UUID
+
+        // Convert receipt text to ESC/POS format or plain text buffer
         const encoder = new TextEncoder();
-        const writer = port.writable.getWriter();
+        const data = encoder.encode(receiptText + '\n\n\n'); // Add line breaks for spacing
 
-        // ESC/POS Command Example
-        const commands = encoder.encode(
-            "\x1B\x40" + // Initialize printer
-            "Crannch Receipt\n" +
-            "----------------\n" +
-            "Item: Classic Cheese\n" +
-            "Qty: 2\n" +
-            "Price: 4.5 KD\n" +
-            "----------------\n" +
-            "Total: 4.5 KD\n" +
-            "\n\n\n" // Feed and cut
-        );
+        // Write data to the printer
+        await characteristic.writeValue(data);
 
-        await writer.write(commands);
-
-        // Close the writer and port
-        writer.releaseLock();
-        await port.close();
-        alert('Printed Successfully!');
+        alert('Receipt printed successfully!');
     } catch (error) {
-        console.error("Error connecting to printer:", error);
-        alert('Failed to connect or print.');
+        console.error('Error printing receipt:', error);
+        alert('Failed to print receipt. Please check your printer and try again.');
     }
 }
-document.getElementById('print-btn').addEventListener('click', connectAndPrint);
-
 
 // Event listeners for navigation
 document.getElementById('food-btn').addEventListener('click', () => renderItems('food'));
