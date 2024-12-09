@@ -245,26 +245,39 @@ async function printReceipt() {
     `;
 
     try {
-        // Request a Bluetooth device
+        // Specify the ESC/POS command for printing
+        const escPosData = `
+            \x1b\x40                 // Initialize printer
+            \x1b\x61\x01             // Center alignment
+            Crannch\n
+            \x1b\x61\x00             // Left alignment
+            Date: ${formattedDate}\n
+            -------------------------\n
+            ${receiptItems}\n
+            -------------------------\n
+            Total: ${total.toFixed(3)} KD\n
+            -------------------------\n
+            Thank you for your purchase!\n
+            Follow us: @crannch_kw\n
+            \n\n\n                  // Feed paper
+            \x1d\x56\x41             // Cut paper
+        `;
+
+        // Convert the ESC/POS command to binary data
+        const encoder = new TextEncoder();
+        const data = encoder.encode(escPosData);
+
+        // Request and connect to the Bluetooth printer
         const device = await navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
-            optionalServices: ['f8bb7416-55bc-48c4-ac41-d9372c0070b9'] // Replace with your printer's service UUID
+            optionalServices: ['00001101-0000-1000-8000-00805f9b34fb'] // Standard Serial Port Service ID
         });
 
-        // Connect to the device's GATT server
         const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
+        const characteristic = await service.getCharacteristic('00001101-0000-1000-8000-00805f9b34fb');
 
-        // Get the service
-        const service = await server.getPrimaryService('f8bb7416-55bc-48c4-ac41-d9372c0070b9'); // Replace with correct UUID
-
-        // Get the characteristic
-        const characteristic = await service.getCharacteristic('4e1e8e0b-e7fc-4cd1-978b-8446316eeab37'); // Replace with correct UUID
-
-        // Convert receipt text to ESC/POS format or plain text buffer
-        const encoder = new TextEncoder();
-        const data = encoder.encode(receiptText + '\n\n\n'); // Add line breaks for spacing
-
-        // Write data to the printer
+        // Write ESC/POS commands to the printer
         await characteristic.writeValue(data);
 
         alert('Receipt printed successfully!');
@@ -273,6 +286,7 @@ async function printReceipt() {
         alert('Failed to print receipt. Please check your printer and try again.');
     }
 }
+
 
 // Event listeners for navigation
 document.getElementById('food-btn').addEventListener('click', () => renderItems('food'));
