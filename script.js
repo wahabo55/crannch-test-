@@ -248,17 +248,17 @@ async function printReceipt() {
         // Request a Bluetooth device
         const device = await navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
-            optionalServices: ['0000180a'] // Replace with your printer's service UUID
+            optionalServices: ['f8bb7416-55bc-48c4-ac41-d9372c0070b9'] // Replace with your printer's service UUID
         });
 
         // Connect to the device's GATT server
         const server = await device.gatt.connect();
 
         // Get the service
-        const service = await server.getPrimaryService('0000180a'); // Replace with correct UUID
+        const service = await server.getPrimaryService('f8bb7416-55bc-48c4-ac41-d9372c0070b9'); // Replace with correct UUID
 
         // Get the characteristic
-        const characteristic = await service.getCharacteristic('00002a57'); // Replace with correct UUID
+        const characteristic = await service.getCharacteristic('4e1e8e0b-e7fc-4cd1-978b-8446316eeab37'); // Replace with correct UUID
 
         // Convert receipt text to ESC/POS format or plain text buffer
         const encoder = new TextEncoder();
